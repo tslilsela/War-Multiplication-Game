@@ -1,177 +1,210 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl" class="h-full">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>מלחמת כפל - MonTeach</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { height: 100vh; overflow: hidden; margin: 0; display: flex; flex-direction: column; font-family: sans-serif; }
-        .grid-cell { aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; border: 0.5px solid #e2e8f0; }
-        .header-blue { background-color: #007bff; color: white; }
-        .header-red { background-color: #dc3545; color: white; }
-        .game-card { font-size: 2.5rem; font-weight: 800; display: flex; align-items: center; justify-content: center; height: 100px; border: 3px solid #374151; border-radius: 1rem; }
+        * { box-sizing: border-box; }
+        body { 
+            margin: 0; padding: 10px; height: 100vh; display: flex; flex-direction: column; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; 
+            background-color: #f9fafb;
+        }
+        
+        header { 
+            flex: 0 0 60px; display: flex; justify-content: space-between; align-items: center; 
+            padding: 0 15px; border-bottom: 2px solid #e5e7eb; background: white; border-radius: 8px;
+            margin-bottom: 5px;
+        }
+        h1 { margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px; }
+        .score { font-weight: bold; color: #1e3a8a; }
+
+        main { 
+            flex: 1; display: flex; flex-direction: row; gap: 15px; padding: 5px; 
+            overflow: hidden; align-items: stretch;
+        }
+        
+        /* Game Area */
+        #game-side { 
+            flex: 1; display: flex; flex-direction: column; align-items: center; 
+            gap: 15px; background: white; padding: 15px; 
+            border-radius: 12px; border: 1px solid #e5e7eb;
+            min-width: 300px;
+        }
+        
+        /* Controls wrapper with fixed height to prevent jumping */
+        #controls-wrapper { 
+            width: 100%; display: flex; flex-direction: column; align-items: center; 
+            min-height: 400px; justify-content: flex-start;
+        }
+
+        #equation-display { 
+            font-size: 2.5rem; font-weight: bold; padding: 15px; 
+            border: 2px solid #1f2937; border-radius: 10px; width: 100%; 
+            text-align: center; direction: ltr; margin-bottom: 15px;
+        }
+        
+        #numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; max-width: 250px; }
+        .numpad-btn { padding: 12px; font-size: 1.2rem; font-weight: bold; border: 1px solid #d1d5db; border-radius: 8px; background: #f3f4f6; cursor: pointer; }
+        #clear-btn { grid-column: span 3; background: #fff5f5; border: 1px solid #feb2b2; }
+
+        /* Chart Area */
+        #chart-side { 
+            flex: 1.5; display: flex; flex-direction: column; align-items: center; 
+            overflow: hidden; background: white; padding: 5px; border-radius: 12px;
+        }
+        #chart-grid { 
+            display: grid; grid-template-columns: repeat(11, 1fr); gap: 1px; 
+            width: 100%; height: 100%; max-height: 80vh; aspect-ratio: 1/1;
+            direction: ltr; /* Force LTR for standard math chart */
+        }
+        .cell { 
+            display: flex; align-items: center; justify-content: center; border: 1px solid #ccc; 
+            font-size: clamp(0.5rem, 1vw, 0.9rem); background: white;
+        }
+        .header-blue { background: #3b82f6; color: white; font-weight: bold; }
+        .header-red { background: #ef4444; color: white; font-weight: bold; }
+
+        footer { flex: 0 0 30px; text-align: center; font-size: 0.9rem; font-weight: bold; color: #db2777; padding-top: 5px; }
+        
+        button#start-btn, button#stop-btn { 
+            padding: 15px 40px; font-size: 1.2rem; background: #2563eb; color: white; 
+            border: none; border-radius: 8px; cursor: pointer; width: 100%; max-width: 250px;
+        }
+        #stop-btn { background: #dc2626; margin-top: 10px; }
     </style>
 </head>
-<body class="bg-gray-50 p-2 md:p-4">
+<body>
 
-    <header class="flex justify-between items-center pb-2 border-b mb-2">
-        <a href="https://monteach.co.il/" target="_blank" class="text-blue-800 font-bold text-sm md:text-lg hover:underline">
-            קהילת ההוראה המונטסורית - MonTeach
-        </a>
-        <h1 class="text-xl md:text-3xl font-bold flex items-center gap-2">
-            ⚔️ מלחמת כפל ⚔️
-        </h1>
-        <div class="text-sm font-bold">
-            <span class="text-blue-600">שחקן: <span id="p-score">0</span></span> | 
-            <span class="text-red-600">מחשב: <span id="c-score">0</span></span>
-        </div>
+    <header>
+        <a href="https://monteach.co.il/" target="_blank" style="text-decoration:none; color:#1e3a8a; font-weight:bold;">קהילת ההוראה המונטסורית - MonTeach</a>
+        <h1>⚔️ מלחמת כפל ⚔️</h1>
+        <div class="score" id="score">שחקן: 0 | מחשב: 0</div>
     </header>
 
-    <main class="flex-grow flex flex-col md:flex-row gap-4 overflow-hidden">
-        
-        <!-- Multiplication Chart (LTR) -->
-        <div class="w-full md:w-1/2 flex flex-col bg-white p-2 rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <h2 class="text-center font-bold text-sm mb-1">לוח הכפל</h2>
-            <div id="chart" class="grid grid-cols-11 gap-0.5 flex-grow" style="direction: ltr;">
-                <!-- Chart injected by JS -->
+    <main>
+        <div id="game-side">
+            <div id="equation-display" style="font-size: 1.5rem;">לחץ על התחל</div>
+            <div id="controls-wrapper">
+                <button id="start-btn">התחל משחק</button>
+                <div id="numpad" style="display:none;"></div>
+                <button id="stop-btn" style="display:none;">עצור</button>
             </div>
         </div>
 
-        <!-- Game Panel -->
-        <div class="w-full md:w-1/2 flex flex-col bg-white p-4 rounded-xl shadow-sm border border-gray-200 items-center justify-center gap-4">
-            <div id="card" class="game-card w-full max-w-sm shadow-lg text-center">
-                לחץ על התחל
-            </div>
-            <div id="feedback" class="h-8 font-bold text-xl"></div>
-            
-            <!-- Controls -->
-            <button id="start-btn" class="bg-blue-600 text-white px-8 py-4 rounded-xl text-xl font-bold hover:bg-blue-700 transition w-full max-w-sm">התחל משחק</button>
-            
-            <div id="numpad" class="grid grid-cols-3 gap-2 w-full max-w-sm hidden">
-                <!-- Numpad injected by JS -->
-            </div>
+        <div id="chart-side">
+            <div id="chart-grid"></div>
         </div>
-
     </main>
 
-    <footer class="pt-2 text-center">
-        <a href="https://www.instagram.com/montessori.teaching/" target="_blank" class="text-pink-600 font-bold hover:underline">
+    <footer>
+        <a href="https://www.instagram.com/montessori.teaching/" target="_blank" style="color:inherit; text-decoration:none;">
             📸 לעוד תכנים מונטסוריים - עקבו באינסטגרם!
         </a>
     </footer>
 
     <script>
-        let deck = [];
-        let currentIndex = 0;
-        let player = 0;
-        let computer = 0;
-        let userAnswer = "";
-        let timer;
-        const TIME_LIMIT = 5000;
-
-        const cardDisplay = document.getElementById('card');
-        const feedbackDisplay = document.getElementById('feedback');
-        const pScore = document.getElementById('p-score');
-        const cScore = document.getElementById('c-score');
-        const numpad = document.getElementById('numpad');
+        let scoreP = 0, scoreC = 0, currentAnswer = 0, gameActive = false, timer, a, b;
+        const equationEl = document.getElementById('equation-display');
+        const numpadEl = document.getElementById('numpad');
         const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const scoreEl = document.getElementById('score');
 
-        function initDeck() {
-            deck = [];
-            for(let i=1; i<=10; i++) {
-                for(let j=1; j<=10; j++) deck.push({a: i, b: j, res: i*j});
-            }
-            deck.sort(() => Math.random() - 0.5);
-            currentIndex = 0; player = 0; computer = 0;
-            updateScore();
+        // Init Chart (LTR Force)
+        const chart = document.getElementById('chart-grid');
+        chart.innerHTML = '<div class="cell header-blue">×</div>';
+        for(let i=1; i<=10; i++) chart.innerHTML += `<div class="cell header-blue">${i}</div>`;
+        for(let i=1; i<=10; i++) {
+            chart.innerHTML += `<div class="cell header-red">${i}</div>`;
+            for(let j=1; j<=10; j++) chart.innerHTML += `<div class="cell">${i*j}</div>`;
         }
 
-        function updateScore() {
-            pScore.innerText = player;
-            cScore.innerText = computer;
-        }
-
-        function buildChart() {
-            const chart = document.getElementById('chart');
-            chart.innerHTML = '';
-            chart.appendChild(document.createElement('div')); // Corner
-            for(let i=1; i<=10; i++) { const h=document.createElement('div'); h.className='grid-cell font-bold header-blue'; h.innerText=i; chart.appendChild(h); }
-            for(let r=1; r<=10; r++) {
-                const rh = document.createElement('div'); rh.className='grid-cell font-bold header-red'; rh.innerText=r; chart.appendChild(rh);
-                for(let c=1; c<=10; c++) {
-                    const cell = document.createElement('div'); cell.className='grid-cell bg-white'; cell.innerText=r*c; chart.appendChild(cell);
-                }
-            }
-        }
-
-        [1,2,3,4,5,6,7,8,9,0].forEach(n => {
+        // Init Numpad
+        const keys = [3,2,1, 6,5,4, 9,8,7, 0];
+        keys.forEach(k => {
             const btn = document.createElement('button');
-            btn.className = "bg-gray-100 p-3 rounded-lg font-bold text-lg hover:bg-blue-100 transition";
-            btn.innerText = n;
-            btn.onclick = () => handleInput(n);
-            numpad.appendChild(btn);
+            btn.className = 'numpad-btn';
+            btn.innerText = k;
+            btn.onclick = () => handleInput(k);
+            numpadEl.appendChild(btn);
         });
         const clearBtn = document.createElement('button');
-        clearBtn.className = "bg-red-100 p-3 rounded-lg font-bold text-lg col-span-3";
-        clearBtn.innerText = "נקה";
-        clearBtn.onclick = () => { userAnswer = ""; updateCardView(); };
-        numpad.appendChild(clearBtn);
+        clearBtn.id = 'clear-btn';
+        clearBtn.innerText = 'נקה';
+        clearBtn.onclick = () => { currentInput = ""; equationEl.innerText = `${a} × ${b} = `; };
+        numpadEl.appendChild(clearBtn);
 
-        function updateCardView() {
-            if (currentIndex >= deck.length) { cardDisplay.innerText = "המשחק נגמר!"; return; }
-            // Fixed equation format a x b =
-            cardDisplay.innerText = `${deck[currentIndex].a} × ${deck[currentIndex].b} = ${userAnswer}`;
-        }
-
-        function handleInput(num) {
-            userAnswer += num;
-            updateCardView();
-            const currentCard = deck[currentIndex];
-            if (parseInt(userAnswer) === currentCard.res) nextRound(true);
-            else if (userAnswer.length >= String(currentCard.res).length) nextRound(false);
-        }
-
-        function nextRound(isCorrect) {
-            clearTimeout(timer);
-            if (isCorrect) {
-                player++;
-                feedbackDisplay.innerText = "צדקת!";
-                feedbackDisplay.className = "h-8 font-bold text-xl text-green-600";
-            } else {
-                computer++;
-                feedbackDisplay.innerText = "נסה שוב";
-                feedbackDisplay.className = "h-8 font-bold text-xl text-red-600";
-            }
-            updateScore();
-            currentIndex++;
-            userAnswer = "";
+        let currentInput = "";
+        function handleInput(val) {
+            if(!gameActive) return;
+            currentInput += val;
+            equationEl.innerText = `${a} × ${b} = ${currentInput}`;
             
-            if (currentIndex < deck.length) {
-                setTimeout(() => {
-                    feedbackDisplay.innerText = "";
-                    updateCardView();
-                    startTimer();
-                }, 1000);
-            } else {
-                cardDisplay.innerText = "נגמרו הקלפים!";
+            if(parseInt(currentInput) === currentAnswer) {
+                gameActive = false; // Stop input
+                scoreP++;
+                equationEl.innerText = "צדקת! הקלף שלך! 🎉";
+                winRound();
+            } else if (currentInput.length >= String(currentAnswer).length) {
+                // Wrong answer - CPU wins card
+                gameActive = false;
+                scoreC++;
+                equationEl.innerText = `המחשב צדק, התשובה היא ${currentAnswer} 😞`;
+                winRound();
             }
         }
 
-        function startTimer() {
+        function nextRound() {
+            a = Math.floor(Math.random()*10)+1;
+            b = Math.floor(Math.random()*10)+1;
+            currentAnswer = a * b;
+            currentInput = "";
+            gameActive = true;
+            equationEl.style.fontSize = "2.5rem";
+            equationEl.innerText = `${a} × ${b} = `;
+            scoreEl.innerText = `שחקן: ${scoreP} | מחשב: ${scoreC}`;
+            
             clearTimeout(timer);
-            timer = setTimeout(() => nextRound(false), TIME_LIMIT);
+            timer = setTimeout(() => { 
+                if(gameActive) {
+                    gameActive = false;
+                    scoreC++; 
+                    equationEl.innerText = `המחשב הקדים! התשובה היא ${currentAnswer} ⏱️`;
+                    winRound();
+                }
+            }, 5000);
+        }
+
+        function winRound() {
+            clearTimeout(timer);
+            scoreEl.innerText = `שחקן: ${scoreP} | מחשב: ${scoreC}`;
+            // Delay next card
+            setTimeout(() => { if(stopBtn.style.display === 'block') nextRound(); }, 1500);
         }
 
         startBtn.onclick = () => {
-            startBtn.classList.add('hidden');
-            numpad.classList.remove('hidden');
-            initDeck();
-            updateCardView();
-            startTimer();
+            gameActive = true;
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'block';
+            numpadEl.style.display = 'grid';
+            scoreP = 0; scoreC = 0;
+            equationEl.style.fontSize = "1.5rem";
+            equationEl.innerText = "המשחק מתחיל! מי יפתור את התרגיל ראשון?";
+            setTimeout(nextRound, 1500);
         };
 
-        buildChart();
+        stopBtn.onclick = () => {
+            gameActive = false;
+            startBtn.style.display = 'block';
+            stopBtn.style.display = 'none';
+            numpadEl.style.display = 'none';
+            equationEl.innerText = "לחץ על התחל";
+            clearTimeout(timer);
+            scoreP = 0; scoreC = 0;
+            scoreEl.innerText = `שחקן: ${scoreP} | מחשב: ${scoreC}`;
+        };
     </script>
 </body>
 </html>
