@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מלחמת כפל - MonTeach</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #dc2626;
+            --bg: #f8fafc;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); }
+        .card {
+            background: white;
+            border: 4px solid #334155;
+            border-radius: 1.5rem;
+            padding: 2rem;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+            text-align: center;
+            font-size: 4rem;
+            font-weight: 800;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1e293b;
+        }
+        .ltr-container { direction: ltr; }
+        .cell { border: 1px solid #e2e8f0; padding: 0.5rem; text-align: center; }
+        .header { background: #f1f5f9; font-weight: bold; }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
+
+    <header class="w-full max-w-5xl text-center mb-8">
+        <a href="https://monteach.co.il/" target="_blank" 
+           class="text-2xl md:text-3xl font-bold text-blue-800 hover:text-blue-600 transition-colors">
+           קהילת ההוראה המונטסורית - MonTeach
+        </a>
+    </header>
+
+    <div class="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        <!-- Game Column -->
+        <div class="bg-white p-6 rounded-3xl shadow-xl border border-slate-200 flex flex-col gap-6">
+            <div class="text-center font-bold text-2xl flex justify-between px-4">
+                <span class="text-blue-600">שחקן: <span id="p-score">0</span></span>
+                <span class="text-red-600">מחשב: <span id="c-score">0</span></span>
+            </div>
+            
+            <div id="card" class="card">---</div>
+            <div id="feedback" class="text-center text-2xl font-bold h-10 transition-all duration-300"></div>
+            
+            <div class="grid grid-cols-3 gap-3" id="numpad">
+                <!-- Numpad injected by JS -->
+            </div>
+        </div>
+
+        <!-- Chart Column -->
+        <div class="bg-white p-6 rounded-3xl shadow-xl border border-slate-200 ltr-container">
+            <h2 class="text-center font-bold text-xl mb-4" style="direction: rtl;">לוח הכפל</h2>
+            <div id="chart" class="grid grid-cols-11 gap-0 bg-slate-200 border border-slate-200 rounded-lg overflow-hidden">
+                <!-- Chart injected by JS -->
+            </div>
+        </div>
+
+    </div>
+
+    <footer class="mt-12 text-center">
+        <a href="https://www.instagram.com/montessori.teaching/" target="_blank" 
+           class="inline-block bg-gradient-to-r from-pink-500 to-violet-600 text-white font-bold py-4 px-8 rounded-full shadow-lg hover:scale-105 transition-transform duration-200">
+           📸 לעוד תכנים מונטסוריים - עקבו באינסטגרם!
+        </a>
+    </footer>
+
+    <script>
+        let deck = [];
+        let currentIndex = 0;
+        let player = 0;
+        let computer = 0;
+        let userAnswer = "";
+        let timer;
+        const TIME_LIMIT = 5000; // 5 seconds for "War" tension
+
+        const cardDisplay = document.getElementById('card');
+        const feedbackDisplay = document.getElementById('feedback');
+        const pScore = document.getElementById('p-score');
+        const cScore = document.getElementById('c-score');
+        const numpad = document.getElementById('numpad');
+
+        function initDeck() {
+            deck = [];
+            for(let i=1; i<=10; i++) {
+                for(let j=1; j<=10; j++) {
+                    deck.push({a: i, b: j, res: i*j});
+                }
+            }
+            // Shuffle
+            deck.sort(() => Math.random() - 0.5);
+            currentIndex = 0;
+            player = 0;
+            computer = 0;
+            pScore.innerText = player;
+            cScore.innerText = computer;
+        }
+
+        // Initialize Numpad
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 0].forEach(n => {
+            const btn = document.createElement('button');
+            btn.className = "bg-slate-100 hover:bg-blue-100 p-6 rounded-2xl font-bold text-3xl transition shadow-sm border border-slate-200";
+            btn.innerText = n;
+            btn.onclick = () => handleInput(n);
+            numpad.appendChild(btn);
+        });
+
+        const clearBtn = document.createElement('button');
+        clearBtn.className = "bg-red-50 hover:bg-red-100 p-6 rounded-2xl font-bold text-xl transition col-span-1 border border-red-200";
+        clearBtn.innerText = "נקה";
+        clearBtn.onclick = () => { userAnswer = ""; updateCardView(); };
+        numpad.appendChild(clearBtn);
+
+        // Build Multiplication Chart (LTR)
+        const chart = document.getElementById('chart');
+        chart.appendChild(document.createElement('div')); // Empty corner
+        for(let i=1; i<=10; i++) { const h=document.createElement('div'); h.className='cell header'; h.innerText=i; chart.appendChild(h); }
+        for(let r=1; r<=10; r++) {
+            const rh = document.createElement('div'); rh.className='cell header'; rh.innerText=r; chart.appendChild(rh);
+            for(let c=1; c<=10; c++) {
+                const cell = document.createElement('div'); cell.className='cell bg-white'; cell.innerText=r*c; chart.appendChild(cell);
+            }
+        }
+
+        function updateCardView() {
+            if (currentIndex >= deck.length) {
+                cardDisplay.innerText = "המשחק נגמר!";
+                return;
+            }
+            const card = deck[currentIndex];
+            cardDisplay.innerText = `${card.a} × ${card.b} = ${userAnswer}`;
+        }
+
+        function nextCard(isWinner) {
+            clearTimeout(timer);
+            if (!isWinner) {
+                computer++;
+                cScore.innerText = computer;
+                feedbackDisplay.innerText = "נסה שוב";
+                feedbackDisplay.style.color = "red";
+            } else {
+                player++;
+                pScore.innerText = player;
+                feedbackDisplay.innerText = "צדקת!";
+                feedbackDisplay.style.color = "green";
+            }
+            
+            currentIndex++;
+            userAnswer = "";
+            
+            setTimeout(() => {
+                feedbackDisplay.innerText = "";
+                if (currentIndex < deck.length) {
+                    startTimer();
+                    updateCardView();
+                } else {
+                    cardDisplay.innerText = "סיום המשחק!";
+                }
+            }, 800); // Slight delay to show result
+        }
+
+        function startTimer() {
+            timer = setTimeout(() => {
+                nextCard(false); // Time out = computer takes card
+            }, TIME_LIMIT);
+        }
+
+        function handleInput(num) {
+            userAnswer += num;
+            updateCardView();
+            
+            const currentCard = deck[currentIndex];
+            const val = parseInt(userAnswer);
+            
+            if (val === currentCard.res) {
+                nextCard(true);
+            } else if (userAnswer.length >= String(currentCard.res).length) {
+                // If wrong number of digits entered, treat as wrong
+                nextCard(false);
+            }
+        }
+
+        initDeck();
+        updateCardView();
+        startTimer();
+    </script>
+</body>
+</html>
